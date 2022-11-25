@@ -10,8 +10,8 @@ void OdomEstimationClass::init(lidar::Lidar lidar_param, double map_resolution){
     laserCloudSurfMap = pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>());
 
     //downsampling size
-    downSizeFilterEdge.setLeafSize(map_resolution, map_resolution, map_resolution);
-    downSizeFilterSurf.setLeafSize(map_resolution * 2, map_resolution * 2, map_resolution * 2);
+    downSizeFilterEdge.setLeafSize(feature_resolution, feature_resolution, feature_resolution);
+    downSizeFilterSurf.setLeafSize(feature_resolution * 2, feature_resolution * 2, feature_resolution * 2);
 
     //kd-tree
     kdtreeEdgeMap = pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr(new pcl::KdTreeFLANN<pcl::PointXYZI>());
@@ -19,19 +19,19 @@ void OdomEstimationClass::init(lidar::Lidar lidar_param, double map_resolution){
 
     odom = Eigen::Isometry3d::Identity();
     last_odom = Eigen::Isometry3d::Identity();
-    optimization_count=2;
+    optimization_count=optimization_times;
 }
 
 void OdomEstimationClass::initMapWithPoints(const pcl::PointCloud<pcl::PointXYZI>::Ptr& edge_in, const pcl::PointCloud<pcl::PointXYZI>::Ptr& surf_in){
     *laserCloudCornerMap += *edge_in;
     *laserCloudSurfMap += *surf_in;
-    optimization_count=12;
+    optimization_count=12;//in the beginning, point cloud is sparse.
 }
 
 
 void OdomEstimationClass::updatePointsToMap(const pcl::PointCloud<pcl::PointXYZI>::Ptr& edge_in, const pcl::PointCloud<pcl::PointXYZI>::Ptr& surf_in){
 
-    if(optimization_count>2)
+    if(optimization_count > optimization_times)
         optimization_count--;
 
     Eigen::Isometry3d odom_prediction = odom * (last_odom.inverse() * odom);
@@ -61,7 +61,7 @@ void OdomEstimationClass::updatePointsToMap(const pcl::PointCloud<pcl::PointXYZI
 
             ceres::Solver::Options options;
             options.linear_solver_type = ceres::DENSE_QR;
-            options.max_num_iterations = 4;
+            options.max_num_iterations = iteration_times;
             options.minimizer_progress_to_stdout = false;
             options.check_gradients = false;
             options.gradient_check_relative_precision = 1e-4;
@@ -71,7 +71,7 @@ void OdomEstimationClass::updatePointsToMap(const pcl::PointCloud<pcl::PointXYZI
 
         }
     }else{
-        printf("not enough points in map to associate, map error");
+        printf("not enough points in OdomEstimation::laserCloudCornerMap, map error");
     }
     odom = Eigen::Isometry3d::Identity();
     odom.linear() = q_w_curr.toRotationMatrix();
@@ -108,7 +108,7 @@ void OdomEstimationClass::addEdgeCostFactor(const pcl::PointCloud<pcl::PointXYZI
         std::vector<int> pointSearchInd;
         std::vector<float> pointSearchSqDis;
         kdtreeEdgeMap->nearestKSearch(point_temp, 5, pointSearchInd, pointSearchSqDis); 
-        if (pointSearchSqDis[4] < 1.0)
+        if (pointSearchSqDis[4] < max_search_dis)
         {
             std::vector<Eigen::Vector3d> nearCorners;
             Eigen::Vector3d center(0, 0, 0);
@@ -147,7 +147,7 @@ void OdomEstimationClass::addEdgeCostFactor(const pcl::PointCloud<pcl::PointXYZI
         }
     }
     if(corner_num<20){
-        printf("not enough correct points");
+        std::cout << "not enough valid edge points" << std::endl;
     }
 
 }
@@ -164,7 +164,7 @@ void OdomEstimationClass::addSurfCostFactor(const pcl::PointCloud<pcl::PointXYZI
 
         Eigen::Matrix<double, 5, 3> matA0;
         Eigen::Matrix<double, 5, 1> matB0 = -1 * Eigen::Matrix<double, 5, 1>::Ones();
-        if (pointSearchSqDis[4] < 1.0)
+        if (pointSearchSqDis[4] < max_search_dis)
         {
             
             for (int j = 0; j < 5; j++)
@@ -202,7 +202,7 @@ void OdomEstimationClass::addSurfCostFactor(const pcl::PointCloud<pcl::PointXYZI
 
     }
     if(surf_num<20){
-        printf("not enough correct points");
+        std::cout << "not enough valid surf points" << std::endl;
     }
 
 }
@@ -222,13 +222,13 @@ void OdomEstimationClass::addPointsToMap(const pcl::PointCloud<pcl::PointXYZI>::
         pointAssociateToMap(&downsampledSurfCloud->points[i], &point_temp);
         laserCloudSurfMap->push_back(point_temp);
     }
-    
-    double x_min = +odom.translation().x()-100;
-    double y_min = +odom.translation().y()-100;
-    double z_min = +odom.translation().z()-100;
-    double x_max = +odom.translation().x()+100;
-    double y_max = +odom.translation().y()+100;
-    double z_max = +odom.translation().z()+100;
+    //double box_sides = 200;
+    double x_min = +odom.translation().x() - box_sides;
+    double y_min = +odom.translation().y() - box_sides;
+    double z_min = +odom.translation().z() - box_sides;
+    double x_max = +odom.translation().x() + box_sides;
+    double y_max = +odom.translation().y() + box_sides;
+    double z_max = +odom.translation().z() + box_sides;
     
     //ROS_INFO("size : %f,%f,%f,%f,%f,%f", x_min, y_min, z_min,x_max, y_max, z_max);
     cropBoxFilter.setMin(Eigen::Vector4f(x_min, y_min, z_min, 1.0));

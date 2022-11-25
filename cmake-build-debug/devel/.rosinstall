@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/ruanjy/Workspace/plane_slam_ws/src/floam/cmake-build-debug/devel/setup.sh

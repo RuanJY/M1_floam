@@ -25,6 +25,8 @@
 //local lib
 #include "lidar.h"
 #include "odomEstimationClass.h"
+#include <pcl_conversions/pcl_conversions.h>
+#include <sensor_msgs/PointCloud2.h>
 
 OdomEstimationClass odomEstimation;
 std::mutex mutex_lock;
@@ -33,6 +35,7 @@ std::queue<sensor_msgs::PointCloud2ConstPtr> pointCloudSurfBuf;
 lidar::Lidar lidar_param;
 
 ros::Publisher pubLaserOdometry;
+ros::Publisher map_pub_odom;
 void velodyneSurfHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
 {
     mutex_lock.lock();
@@ -50,7 +53,7 @@ bool is_odom_inited = false;
 double total_time =0;
 int total_frame=0;
 void odom_estimation(){
-    while(1){
+    while(ros::ok()){
         if(!pointCloudEdgeBuf.empty() && !pointCloudSurfBuf.empty()){
 
             //read data
@@ -86,13 +89,24 @@ void odom_estimation(){
             }else{
                 std::chrono::time_point<std::chrono::system_clock> start, end;
                 start = std::chrono::system_clock::now();
+
                 odomEstimation.updatePointsToMap(pointcloud_edge_in, pointcloud_surf_in);
+
                 end = std::chrono::system_clock::now();
                 std::chrono::duration<float> elapsed_seconds = end - start;
                 total_frame++;
                 float time_temp = elapsed_seconds.count() * 1000;
                 total_time+=time_temp;
-                ROS_INFO("average odom estimation time %f ms \n \n", total_time/total_frame);
+                std::cout << "odom time in frame " << total_frame << ": " << time_temp << "ms, avg: " << total_time/total_frame << std::endl;
+                //ROS_INFO("average odom estimation time %f ms \n \n", total_time/total_frame);
+
+                //print used tmp surf map in odom
+                sensor_msgs::PointCloud2 PointsMsg;
+                pcl::toROSMsg(*odomEstimation.laserCloudSurfMap, PointsMsg);
+                PointsMsg.header.stamp = pointcloud_time;
+                PointsMsg.header.frame_id = "map";
+                map_pub_odom.publish(PointsMsg);
+
             }
 
 
@@ -144,7 +158,7 @@ int main(int argc, char **argv)
     nh.getParam("/vertical_angle", vertical_angle); 
     nh.getParam("/max_dis", max_dis);
     nh.getParam("/min_dis", min_dis);
-    nh.getParam("/scan_line", scan_line);
+    nh.getParam("/scan_line", scan_line);//not used
     nh.getParam("/map_resolution", map_resolution);
 
     lidar_param.setScanPeriod(scan_period);
@@ -158,6 +172,8 @@ int main(int argc, char **argv)
     ros::Subscriber subSurfLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_surf", 100, velodyneSurfHandler);
 
     pubLaserOdometry = nh.advertise<nav_msgs::Odometry>("/odom", 100);
+    map_pub_odom = nh.advertise<sensor_msgs::PointCloud2>("/map_odom", 100);
+
     std::thread odom_estimation_process{odom_estimation};
 
     ros::spin();

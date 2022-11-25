@@ -23,9 +23,9 @@
 #include <vector>
 
 
-#define LASER_CELL_WIDTH 50.0
-#define LASER_CELL_HEIGHT 50.0
-#define LASER_CELL_DEPTH 50.0
+#define LASER_CELL_WIDTH 500.0
+#define LASER_CELL_HEIGHT 500.0
+#define LASER_CELL_DEPTH 500.0
 
 //separate map as many sub point clouds
 

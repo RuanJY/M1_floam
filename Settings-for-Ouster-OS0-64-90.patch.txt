@@ -1,0 +1,71 @@
+From 1bcd9abfb2f8438facd73dc3a612c2bc3232db18 Mon Sep 17 00:00:00 2001
+From: masterhui <xxx@yyy.com>
+Date: Thu, 21 Oct 2021 09:42:49 +0200
+Subject: [PATCH] =?UTF-8?q?Settings=20for=20Ouster=20OS0-64=20@90?=
+ =?UTF-8?q?=C2=B0?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ src/laserProcessingClass.cpp | 29 ++++++++++++++++++++++-------
+ 1 file changed, 22 insertions(+), 7 deletions(-)
+
+diff --git a/src/laserProcessingClass.cpp b/src/laserProcessingClass.cpp
+index c8e1297..c93fbad 100644
+--- a/src/laserProcessingClass.cpp
++++ b/src/laserProcessingClass.cpp
+@@ -2,6 +2,7 @@
+ // Email wh200720041@gmail.com
+ // Homepage https://wanghan.pro
+ #include "laserProcessingClass.h"
++#include <ros/console.h>
+ 
+ void LaserProcessingClass::init(lidar::Lidar lidar_param_in){
+     
+@@ -23,6 +24,10 @@ void LaserProcessingClass::featureExtraction(const pcl::PointCloud<pcl::PointXYZ
+ 
+     for (int i = 0; i < (int) pc_in->points.size(); i++)
+     {
++        // Skip in case of nan data
++        if (pc_in->points[i].x == 0 || pc_in->points[i].y == 0)
++            continue;
++
+         int scanID=0;
+         double distance = sqrt(pc_in->points[i].x * pc_in->points[i].x + pc_in->points[i].y * pc_in->points[i].y);
+         if(distance<lidar_param.min_distance || distance>lidar_param.max_distance)
+@@ -47,15 +52,25 @@ void LaserProcessingClass::featureExtraction(const pcl::PointCloud<pcl::PointXYZ
+         }
+         else if (N_SCANS == 64)
+         {   
+-            if (angle >= -8.83)
+-                scanID = int((2 - angle) * 3.0 + 0.5);
+-            else
+-                scanID = N_SCANS / 2 + int((-8.83 - angle) * 2.0 + 0.5);
+-
+-            if (angle > 2 || angle < -24.33 || scanID > 63 || scanID < 0)
++            // Velodyne HDL-64E
++            // if (angle >= -8.83)
++            //     scanID = int((2 - angle) * 3.0 + 0.5);
++            // else
++            //     scanID = N_SCANS / 2 + int((-8.83 - angle) * 2.0 + 0.5);            
++            // if (angle > 2 || angle < -24.33 || scanID > 63 || scanID < 0)
++            // {
++            //     ROS_WARN_STREAM("SKIP scanID=" << scanID << " angle=" << angle);
++            //     continue;
++            // }
++
++            // Ouster OS0-64 @90°
++            scanID = int(((angle + 46.5) * 87.0 ) / 127.0);
++            if (scanID > N_SCANS-1 || scanID < 0)
+             {
++                ROS_WARN_STREAM("SKIP scanID=" << scanID << " angle " << angle);
+                 continue;
+-            }
++            } 
+         }
+         else
+         {
+-- 
+2.17.1
+

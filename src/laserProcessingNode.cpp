@@ -42,6 +42,7 @@ void velodyneHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
     mutex_lock.lock();
     pointCloudBuf.push(laserCloudMsg);
     mutex_lock.unlock();
+    //ROS_INFO("velodyneHandler");
    
 }
 
@@ -49,7 +50,7 @@ double total_time =0;
 int total_frame=0;
 
 void laser_processing(){
-    while(1){
+    while(ros::ok()){
         if(!pointCloudBuf.empty()){
             //read data
             mutex_lock.lock();
@@ -59,12 +60,48 @@ void laser_processing(){
             pointCloudBuf.pop();
             mutex_lock.unlock();
 
+            //convert M1 point cloud into 5 * 5 * n sector
+            std::vector<std::vector<pcl::PointCloud<pcl::PointXYZI>>> pointcloud_subcloud_channel(5, std::vector<pcl::PointCloud<pcl::PointXYZI>>(5));
+            // 5 * 5 * width array to store small point channel
+            //ROS_INFO("before put");
+            //old M1 bag zju, the width and height are exchanged
+/*            for(int i_subcloud = 0; i_subcloud < pointcloud_in->height; i_subcloud++){//height, horizental
+                for(int i_width = 0; i_width < pointcloud_in->width; i_width ++){//all point in this sector
+                    //pointcloud_in->at(i_width, i_subcloud).intensity = i_subcloud + 10 * (i_width% 5);
+                    pointcloud_subcloud_channel[i_subcloud][i_width % 5].push_back(pointcloud_in->at(i_width, i_subcloud));
+                }
+            }*/
+            //new bag sdk
+            for(int i_subcloud = 0; i_subcloud < pointcloud_in->width; i_subcloud++){//height, horizental
+                for(int i_width = 0; i_width < pointcloud_in->height; i_width ++){//all point in this sector
+                    //pointcloud_in->at(i_width, i_subcloud).intensity = i_subcloud + 10 * (i_width% 5);
+                    pointcloud_subcloud_channel[i_subcloud][i_width % 5].push_back(pointcloud_in->at(i_subcloud, i_width));
+                }
+            }
+            //ROS_INFO("after put");
+
+            //test if point is correct, result: correct
+/*            std::vector<int> indices;
+            pcl::removeNaNFromPointCloud(*pointcloud_in,*pointcloud_in, indices);*/
+/*            sensor_msgs::PointCloud2 laserCloudRaw;
+            pcl::toROSMsg(*pointcloud_in, laserCloudRaw);
+            laserCloudRaw.header.stamp = pointcloud_time;
+            laserCloudRaw.header.frame_id = "base_link";
+            pubLaserCloudFiltered.publish(laserCloudRaw);
+            std::cout << "laserCloudRaw num: " << pointcloud_in->points.size() <<std::endl;
+            std::cout << "height: " << pointcloud_in->height <<std::endl;
+
+            for(int i=0; i<50; i++){
+                std::cout << "point: " << pointcloud_in->at(i,0) <<std::endl;
+            }*/
+
             pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZI>());          
             pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_surf(new pcl::PointCloud<pcl::PointXYZI>());
 
             std::chrono::time_point<std::chrono::system_clock> start, end;
             start = std::chrono::system_clock::now();
-            laserProcessing.featureExtraction(pointcloud_in,pointcloud_edge,pointcloud_surf);
+            //laserProcessing.featureExtraction(pointcloud_in,pointcloud_edge,pointcloud_surf);
+            laserProcessing.featureExtractionM1(pointcloud_subcloud_channel, pointcloud_edge, pointcloud_surf);
             end = std::chrono::system_clock::now();
             std::chrono::duration<float> elapsed_seconds = end - start;
             total_frame++;
@@ -126,7 +163,8 @@ int main(int argc, char **argv)
 
     laserProcessing.init(lidar_param);
 
-    ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/velodyne_points", 100, velodyneHandler);
+    //ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/velodyne_points", 100, velodyneHandler);
+    ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/rslidar_points", 100, velodyneHandler);
 
     pubLaserCloudFiltered = nh.advertise<sensor_msgs::PointCloud2>("/velodyne_points_filtered", 100);
 

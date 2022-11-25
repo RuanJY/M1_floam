@@ -2,7 +2,7 @@
 <launch>
 
     
-    <node pkg="rosbag" type="play" name="rosbag_play" args="--clock $(env HOME)/Downloads/2011_09_30_0018.bag"/> 
+    <node pkg="rosbag" type="play" name="rosbag_play" args="--clock /home/ruanjy/HDD/dataset_all/kitti_odometry/bag/2011_09_30_0018.bag"/> 
 
     <!-- For Velodyne VLP-16 
     <param name="scan_line" value="16" />
