@@ -1,7 +1,9 @@
 # M1_FLOAM 
 modified version of floam for robosense M1 sensor
-
-
+run:
+```
+roslaunch floam floam_mapping_M1.launch
+```
 # FLOAM 
 ## Fast LOAM (Lidar Odometry And Mapping)
 
