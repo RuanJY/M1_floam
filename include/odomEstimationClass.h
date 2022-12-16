@@ -9,6 +9,8 @@
 #include <math.h>
 #include <vector>
 
+#define PCL_NO_PRECOMPILE
+
 //PCL
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -32,6 +34,8 @@
 #include "lidar.h"
 #include "lidarOptimization.h"
 #include <ros/ros.h>
+#include "pointtype.h"
+#include "write_log.h"
 
 class OdomEstimationClass 
 {
@@ -40,13 +44,14 @@ class OdomEstimationClass
     	OdomEstimationClass();
     	
 		void init(lidar::Lidar lidar_param, double map_resolution);	
-		void initMapWithPoints(const pcl::PointCloud<pcl::PointXYZI>::Ptr& edge_in, const pcl::PointCloud<pcl::PointXYZI>::Ptr& surf_in);
-		void updatePointsToMap(const pcl::PointCloud<pcl::PointXYZI>::Ptr& edge_in, const pcl::PointCloud<pcl::PointXYZI>::Ptr& surf_in);
-		void getMap(pcl::PointCloud<pcl::PointXYZI>::Ptr& laserCloudMap);
+		void initMapWithPoints(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& edge_in, const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& surf_in);
+		void updatePointsToMap(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& edge_in, const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& surf_in,
+		                        FILE *fp1, FILE *fp2);
+		void getMap(pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& laserCloudMap);
 
 		Eigen::Isometry3d odom;
-		pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloudCornerMap;
-		pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloudSurfMap;
+		pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr laserCloudCornerMap;
+		pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr laserCloudSurfMap;
 	private:
         //param
         double max_search_dis = 25; // kdtree_d
@@ -63,25 +68,25 @@ class OdomEstimationClass
 		Eigen::Isometry3d last_odom;
 
 		//kd-tree
-		pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr kdtreeEdgeMap;
-		pcl::KdTreeFLANN<pcl::PointXYZI>::Ptr kdtreeSurfMap;
+		pcl::KdTreeFLANN<RslidarM1PointXYZIRT>::Ptr kdtreeEdgeMap;
+		pcl::KdTreeFLANN<RslidarM1PointXYZIRT>::Ptr kdtreeSurfMap;
 
 		//points downsampling before add to map
-		pcl::VoxelGrid<pcl::PointXYZI> downSizeFilterEdge;
-		pcl::VoxelGrid<pcl::PointXYZI> downSizeFilterSurf;
+		pcl::VoxelGrid<RslidarM1PointXYZIRT> downSizeFilterEdge;
+		pcl::VoxelGrid<RslidarM1PointXYZIRT> downSizeFilterSurf;
 
 		//local map
-		pcl::CropBox<pcl::PointXYZI> cropBoxFilter;
+		pcl::CropBox<RslidarM1PointXYZIRT> cropBoxFilter;
 
 		//optimization count 
 		int optimization_count;
 
 		//function
-		void addEdgeCostFactor(const pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_in, const pcl::PointCloud<pcl::PointXYZI>::Ptr& map_in, ceres::Problem& problem, ceres::LossFunction *loss_function);
-		void addSurfCostFactor(const pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_in, const pcl::PointCloud<pcl::PointXYZI>::Ptr& map_in, ceres::Problem& problem, ceres::LossFunction *loss_function);
-		void addPointsToMap(const pcl::PointCloud<pcl::PointXYZI>::Ptr& downsampledEdgeCloud, const pcl::PointCloud<pcl::PointXYZI>::Ptr& downsampledSurfCloud);
-		void pointAssociateToMap(pcl::PointXYZI const *const pi, pcl::PointXYZI *const po);
-		void downSamplingToMap(const pcl::PointCloud<pcl::PointXYZI>::Ptr& edge_pc_in, pcl::PointCloud<pcl::PointXYZI>::Ptr& edge_pc_out, const pcl::PointCloud<pcl::PointXYZI>::Ptr& surf_pc_in, pcl::PointCloud<pcl::PointXYZI>::Ptr& surf_pc_out);
+		void addEdgeCostFactor(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_in, const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& map_in, ceres::Problem& problem, ceres::LossFunction *loss_function);
+		void addSurfCostFactor(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_in, const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& map_in, ceres::Problem& problem, ceres::LossFunction *loss_function);
+		void addPointsToMap(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& downsampledEdgeCloud, const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& downsampledSurfCloud);
+		void pointAssociateToMap(RslidarM1PointXYZIRT const *const pi, RslidarM1PointXYZIRT *const po);
+		void downSamplingToMap(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& edge_pc_in, pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& edge_pc_out, const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& surf_pc_in, pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& surf_pc_out);
 };
 
 #endif // _ODOM_ESTIMATION_CLASS_H_

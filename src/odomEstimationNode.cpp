@@ -36,6 +36,12 @@ lidar::Lidar lidar_param;
 
 ros::Publisher pubLaserOdometry;
 ros::Publisher map_pub_odom;
+
+FILE *fp_downsampled_edgecloud_size;
+FILE *fp_downsampled_surfcloud_size;
+std::string downsampled_edgecloud_size_path;
+std::string downsampled_surfcloud_size_path;
+
 void velodyneSurfHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
 {
     mutex_lock.lock();
@@ -73,8 +79,8 @@ void odom_estimation(){
             }
             //if time aligned 
 
-            pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_surf_in(new pcl::PointCloud<pcl::PointXYZI>());
-            pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_edge_in(new pcl::PointCloud<pcl::PointXYZI>());
+            pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr pointcloud_surf_in(new pcl::PointCloud<RslidarM1PointXYZIRT>());
+            pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr pointcloud_edge_in(new pcl::PointCloud<RslidarM1PointXYZIRT>());
             pcl::fromROSMsg(*pointCloudEdgeBuf.front(), *pointcloud_edge_in);
             pcl::fromROSMsg(*pointCloudSurfBuf.front(), *pointcloud_surf_in);
             ros::Time pointcloud_time = (pointCloudSurfBuf.front())->header.stamp;
@@ -90,7 +96,8 @@ void odom_estimation(){
                 std::chrono::time_point<std::chrono::system_clock> start, end;
                 start = std::chrono::system_clock::now();
 
-                odomEstimation.updatePointsToMap(pointcloud_edge_in, pointcloud_surf_in);
+//                odomEstimation.updatePointsToMap(pointcloud_edge_in, pointcloud_surf_in);
+                odomEstimation.updatePointsToMap(pointcloud_edge_in, pointcloud_surf_in, fp_downsampled_edgecloud_size, fp_downsampled_surfcloud_size);
 
                 end = std::chrono::system_clock::now();
                 std::chrono::duration<float> elapsed_seconds = end - start;
@@ -160,6 +167,11 @@ int main(int argc, char **argv)
     nh.getParam("/min_dis", min_dis);
     nh.getParam("/scan_line", scan_line);//not used
     nh.getParam("/map_resolution", map_resolution);
+
+    nh.getParam("downsampled_edgecloud_size_path", downsampled_edgecloud_size_path);
+    fp_downsampled_edgecloud_size = fopen(downsampled_edgecloud_size_path.c_str(), "w");
+    nh.getParam("downsampled_surfcloud_size_path", downsampled_surfcloud_size_path);
+    fp_downsampled_surfcloud_size = fopen(downsampled_surfcloud_size_path.c_str(), "w");
 
     lidar_param.setScanPeriod(scan_period);
     lidar_param.setVerticalAngle(vertical_angle);

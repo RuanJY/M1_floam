@@ -5,6 +5,8 @@
 #ifndef _LASER_MAPPING_H_
 #define _LASER_MAPPING_H_
 
+#define PCL_NO_PRECOMPILE
+
 //PCL lib
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -22,6 +24,7 @@
 #include <math.h>
 #include <vector>
 
+#include "pointtype.h"
 
 #define LASER_CELL_WIDTH 500.0
 #define LASER_CELL_HEIGHT 500.0
@@ -39,8 +42,8 @@ class LaserMappingClass
     public:
     	LaserMappingClass();
 		void init(double map_resolution);
-		void updateCurrentPointsToMap(const pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_in, const Eigen::Isometry3d& pose_current);
-		pcl::PointCloud<pcl::PointXYZI>::Ptr getMap(void);
+		void updateCurrentPointsToMap(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_in, const Eigen::Isometry3d& pose_current);
+		pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr getMap(void);
 
 	private:
 		int origin_in_map_x;
@@ -49,8 +52,8 @@ class LaserMappingClass
 		int map_width;
 		int map_height;
 		int map_depth;
-		std::vector<std::vector<std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr>>> map;
-		pcl::VoxelGrid<pcl::PointXYZI> downSizeFilter;
+		std::vector<std::vector<std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr>>> map;
+		pcl::VoxelGrid<RslidarM1PointXYZIRT> downSizeFilter;
 		
 		void addWidthCellNegative(void);
 		void addWidthCellPositive(void);

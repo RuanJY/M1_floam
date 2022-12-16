@@ -4,6 +4,8 @@
 #ifndef _LASER_PROCESSING_CLASS_H_
 #define _LASER_PROCESSING_CLASS_H_
 
+#define PCL_NO_PRECOMPILE
+
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
@@ -14,6 +16,7 @@
 #include <pcl/filters/crop_box.h>
 
 #include "lidar.h"
+#include "pointtype.h"
 
 //points covariance class
 class Double2d{
@@ -37,9 +40,9 @@ class LaserProcessingClass
         int surf_point_skip = 3;
     	LaserProcessingClass();
 		void init(lidar::Lidar lidar_param_in);
-		void featureExtraction(const pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_in, pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_edge, pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_surf);
-		void featureExtractionFromSector(const pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_in, std::vector<Double2d>& cloudCurvature, pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_edge, pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_surf);
-        void featureExtractionM1(std::vector<std::vector<pcl::PointCloud<pcl::PointXYZI>>>& pointcloud_subcloud_channel, pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_edge, pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_surf);
+		void featureExtraction(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_in, pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_out_edge, pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_out_surf);
+		void featureExtractionFromSector(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_in, std::vector<Double2d>& cloudCurvature, pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_out_edge, pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_out_surf);
+        void featureExtractionM1(std::vector<std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>>>& pointcloud_subcloud_channel, pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_out_edge, pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_out_surf);
 	private:
      	lidar::Lidar lidar_param;
 };

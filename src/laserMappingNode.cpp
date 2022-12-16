@@ -70,7 +70,7 @@ void laser_mapping(){
             }
 
             //if time aligned 
-            pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_in(new pcl::PointCloud<pcl::PointXYZI>());
+            pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr pointcloud_in(new pcl::PointCloud<RslidarM1PointXYZIRT>());
             pcl::fromROSMsg(*pointCloudBuf.front(), *pointcloud_in);
             ros::Time pointcloud_time = (pointCloudBuf.front())->header.stamp;
 
@@ -84,7 +84,7 @@ void laser_mapping(){
 
             laserMapping.updateCurrentPointsToMap(pointcloud_in,current_pose);
 
-            pcl::PointCloud<pcl::PointXYZI>::Ptr pc_map = laserMapping.getMap();
+            pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr pc_map = laserMapping.getMap();
             sensor_msgs::PointCloud2 PointsMsg;
             pcl::toROSMsg(*pc_map, PointsMsg);
             PointsMsg.header.stamp = pointcloud_time;

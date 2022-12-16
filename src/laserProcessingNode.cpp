@@ -36,6 +36,7 @@ lidar::Lidar lidar_param;
 ros::Publisher pubEdgePoints;
 ros::Publisher pubSurfPoints;
 ros::Publisher pubLaserCloudFiltered;
+ros::Publisher pubLaserCloudIn;
 
 void velodyneHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
 {
@@ -54,30 +55,38 @@ void laser_processing(){
         if(!pointCloudBuf.empty()){
             //read data
             mutex_lock.lock();
-            pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_in(new pcl::PointCloud<pcl::PointXYZI>());
+            pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr pointcloud_in(new pcl::PointCloud<RslidarM1PointXYZIRT>());
             pcl::fromROSMsg(*pointCloudBuf.front(), *pointcloud_in);
             ros::Time pointcloud_time = (pointCloudBuf.front())->header.stamp;
             pointCloudBuf.pop();
             mutex_lock.unlock();
 
             //convert M1 point cloud into 5 * 5 * n sector
-            std::vector<std::vector<pcl::PointCloud<pcl::PointXYZI>>> pointcloud_subcloud_channel(5, std::vector<pcl::PointCloud<pcl::PointXYZI>>(5));
+            std::vector<std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>>> pointcloud_subcloud_channel(5, std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>>(5));
             // 5 * 5 * width array to store small point channel
             //ROS_INFO("before put");
             //old M1 bag zju, the width and height are exchanged
-/*            for(int i_subcloud = 0; i_subcloud < pointcloud_in->height; i_subcloud++){//height, horizental
+/*            for(int i_subcloud = 0; i_subcloud < pointcloud_in->height; i_subcloud++){//height, horizontal
                 for(int i_width = 0; i_width < pointcloud_in->width; i_width ++){//all point in this sector
                     //pointcloud_in->at(i_width, i_subcloud).intensity = i_subcloud + 10 * (i_width% 5);
                     pointcloud_subcloud_channel[i_subcloud][i_width % 5].push_back(pointcloud_in->at(i_width, i_subcloud));
                 }
             }*/
             //new bag sdk
-            for(int i_subcloud = 0; i_subcloud < pointcloud_in->width; i_subcloud++){//height, horizental
-                for(int i_width = 0; i_width < pointcloud_in->height; i_width ++){//all point in this sector
+            double first_point_timestamp = pointcloud_in->at(0, 0).timestamp;
+            for(size_t i_subcloud = 0; i_subcloud < pointcloud_in->width; i_subcloud++){//height, horizontal
+                for(size_t i_width = 0; i_width < pointcloud_in->height; i_width ++){//all point in this sector
                     //pointcloud_in->at(i_width, i_subcloud).intensity = i_subcloud + 10 * (i_width% 5);
+                    double elapsed_time =  pointcloud_in->at(i_subcloud, i_width).timestamp - first_point_timestamp;
+//                    std::cout<< elapsed_time << " ";
+                    if(elapsed_time < 0.02 && elapsed_time > 0){
+                        pointcloud_in->at(i_subcloud, i_width).intensity = elapsed_time;
+                    }
                     pointcloud_subcloud_channel[i_subcloud][i_width % 5].push_back(pointcloud_in->at(i_subcloud, i_width));
+
                 }
             }
+//            std::cout<<std::endl;
             //ROS_INFO("after put");
 
             //test if point is correct, result: correct
@@ -95,8 +104,8 @@ void laser_processing(){
                 std::cout << "point: " << pointcloud_in->at(i,0) <<std::endl;
             }*/
 
-            pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZI>());          
-            pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_surf(new pcl::PointCloud<pcl::PointXYZI>());
+            pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr pointcloud_edge(new pcl::PointCloud<RslidarM1PointXYZIRT>());
+            pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr pointcloud_surf(new pcl::PointCloud<RslidarM1PointXYZIRT>());
 
             std::chrono::time_point<std::chrono::system_clock> start, end;
             start = std::chrono::system_clock::now();
@@ -109,8 +118,14 @@ void laser_processing(){
             total_time+=time_temp;
             //ROS_INFO("average laser processing time %f ms \n \n", total_time/total_frame);
 
+            sensor_msgs::PointCloud2 laserCloudInMsg;
+            pcl::toROSMsg(*pointcloud_in, laserCloudInMsg);
+            laserCloudInMsg.header.stamp = pointcloud_time;
+            laserCloudInMsg.header.frame_id = "base_link";
+            pubLaserCloudIn.publish(laserCloudInMsg);
+
             sensor_msgs::PointCloud2 laserCloudFilteredMsg;
-            pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_filtered(new pcl::PointCloud<pcl::PointXYZI>());  
+            pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr pointcloud_filtered(new pcl::PointCloud<RslidarM1PointXYZIRT>());
             *pointcloud_filtered+=*pointcloud_edge;
             *pointcloud_filtered+=*pointcloud_surf;
             pcl::toROSMsg(*pointcloud_filtered, laserCloudFilteredMsg);
@@ -165,6 +180,8 @@ int main(int argc, char **argv)
 
     //ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/velodyne_points", 100, velodyneHandler);
     ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/rslidar_points", 100, velodyneHandler);
+
+    pubLaserCloudIn = nh.advertise<sensor_msgs::PointCloud2>("/velodyne_points_in", 100);
 
     pubLaserCloudFiltered = nh.advertise<sensor_msgs::PointCloud2>("/velodyne_points_filtered", 100);
 

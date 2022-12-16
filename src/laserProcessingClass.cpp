@@ -10,18 +10,18 @@ void LaserProcessingClass::init(lidar::Lidar lidar_param_in){
 
 }
 
-void LaserProcessingClass::featureExtraction(const pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_in,
-                                             pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_edge,
-                                             pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_surf){
+void LaserProcessingClass::featureExtraction(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_in,
+                                             pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_out_edge,
+                                             pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_out_surf){
 
     std::vector<int> indices;
     pcl::removeNaNFromPointCloud(*pc_in, indices);
 
 
     int N_SCANS = lidar_param.num_lines;
-    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> laserCloudScans;
+    std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr> laserCloudScans;
     for(int i=0;i<N_SCANS;i++){
-        laserCloudScans.push_back(pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>()));
+        laserCloudScans.push_back(pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr(new pcl::PointCloud<RslidarM1PointXYZIRT>()));
     }
 
     for (int i = 0; i < (int) pc_in->points.size(); i++)
@@ -99,9 +99,9 @@ void LaserProcessingClass::featureExtraction(const pcl::PointCloud<pcl::PointXYZ
     }
 
 }
-void LaserProcessingClass::featureExtractionM1(std::vector<std::vector<pcl::PointCloud<pcl::PointXYZI>>>& pointcloud_subcloud_channel,
-                                             pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_edge,
-                                             pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_surf){
+void LaserProcessingClass::featureExtractionM1(std::vector<std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>>>& pointcloud_subcloud_channel,
+                                             pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_out_edge,
+                                             pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_out_surf){
     //ROS_INFO("featureExtractionM1");
 
     for(int i_subcloud = 0; i_subcloud < 5; i_subcloud++){//height=sector
@@ -111,22 +111,21 @@ void LaserProcessingClass::featureExtractionM1(std::vector<std::vector<pcl::Poin
             pcl::removeNaNFromPointCloud(pointcloud_subcloud_channel[i_subcloud][i_channel], pointcloud_subcloud_channel[i_subcloud][i_channel], indices);
         }
     }
-    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> laserCloudScans;
+    std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr> laserCloudScans;
     for(int i_sector = 0; i_sector < 5; i_sector++){//height=sector
         for(int i_channel = 0; i_channel < 5; i_channel ++){//5 channel
-            pcl::PointCloud<pcl::PointXYZI>& pc_in = (pointcloud_subcloud_channel[i_sector][i_channel]);
+            pcl::PointCloud<RslidarM1PointXYZIRT>& pc_in = (pointcloud_subcloud_channel[i_sector][i_channel]);
             laserCloudScans.push_back(pc_in.makeShared());
         }
     }
 
-    for(int i = 0; i < laserCloudScans.size(); i++){
+    for(size_t i = 0; i < laserCloudScans.size(); i++){
         if(laserCloudScans[i]->points.size()<131){
-            continue;
             continue;
         }
 
         std::vector<Double2d> cloudCurvature;
-        int total_points = laserCloudScans[i]->points.size()-10;
+//        size_t total_points = laserCloudScans[i]->points.size()-10;
         for(int j = 5; j < (int)laserCloudScans[i]->points.size() - 5; j++){
             double diffX = laserCloudScans[i]->points[j - 5].x + laserCloudScans[i]->points[j - 4].x + laserCloudScans[i]->points[j - 3].x + laserCloudScans[i]->points[j - 2].x + laserCloudScans[i]->points[j - 1].x - 10 * laserCloudScans[i]->points[j].x + laserCloudScans[i]->points[j + 1].x + laserCloudScans[i]->points[j + 2].x + laserCloudScans[i]->points[j + 3].x + laserCloudScans[i]->points[j + 4].x + laserCloudScans[i]->points[j + 5].x;
             double diffY = laserCloudScans[i]->points[j - 5].y + laserCloudScans[i]->points[j - 4].y + laserCloudScans[i]->points[j - 3].y + laserCloudScans[i]->points[j - 2].y + laserCloudScans[i]->points[j - 1].y - 10 * laserCloudScans[i]->points[j].y + laserCloudScans[i]->points[j + 1].y + laserCloudScans[i]->points[j + 2].y + laserCloudScans[i]->points[j + 3].y + laserCloudScans[i]->points[j + 4].y + laserCloudScans[i]->points[j + 5].y;
@@ -143,10 +142,10 @@ void LaserProcessingClass::featureExtractionM1(std::vector<std::vector<pcl::Poin
 }
 
 
-void LaserProcessingClass::featureExtractionFromSector(const pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_in,
+void LaserProcessingClass::featureExtractionFromSector(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_in,
                                                        std::vector<Double2d>& cloudCurvature,
-                                                       pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_edge,
-                                                       pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_surf){
+                                                       pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_out_edge,
+                                                       pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_out_surf){
     //ROS_INFO("featureExtractionFromSector");
 
     std::sort(cloudCurvature.begin(), cloudCurvature.end(), [](const Double2d & a, const Double2d & b)
@@ -169,7 +168,7 @@ void LaserProcessingClass::featureExtractionFromSector(const pcl::PointCloud<pcl
             largestPickedNum++;
             picked_points.push_back(ind);
             
-            if (largestPickedNum <= 20){//maximun 10 points in each sector
+            if (largestPickedNum <= 20){//maximum 10 points in each sector
                 pc_out_edge->push_back(pc_in->points[ind]);
                 point_info_count++;
             }else{
@@ -192,7 +191,7 @@ void LaserProcessingClass::featureExtractionFromSector(const pcl::PointCloud<pcl
                 if (diffX * diffX + diffY * diffY + diffZ * diffZ > 0.05){
                     break;
                 }
-                picked_points.push_back(ind+k);//mark neighboor point as picked
+                picked_points.push_back(ind+k);//mark neighbor point as picked
             }
 
         }
