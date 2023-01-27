@@ -62,7 +62,7 @@ void laser_processing(){
             mutex_lock.unlock();
 
             //convert M1 point cloud into 5 * 5 * n sector
-            std::vector<std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>>> pointcloud_subcloud_channel(5, std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>>(5));
+            std::vector<std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>>> pointcloud_subcloud_channel(5, std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>>(6));
             // 5 * 5 * width array to store small point channel
             //ROS_INFO("before put");
             //old M1 bag zju, the width and height are exchanged
@@ -74,18 +74,37 @@ void laser_processing(){
             }*/
             //new bag sdk
             double first_point_timestamp = pointcloud_in->at(0, 0).timestamp;
-            for(size_t i_subcloud = 0; i_subcloud < pointcloud_in->width; i_subcloud++){//height, horizontal
-                for(size_t i_width = 0; i_width < pointcloud_in->height; i_width ++){//all point in this sector
-                    //pointcloud_in->at(i_width, i_subcloud).intensity = i_subcloud + 10 * (i_width% 5);
-                    double elapsed_time =  pointcloud_in->at(i_subcloud, i_width).timestamp - first_point_timestamp;
-//                    std::cout<< elapsed_time << " ";
-                    if(elapsed_time < 0.02 && elapsed_time > 0){
-                        pointcloud_in->at(i_subcloud, i_width).intensity = elapsed_time;
-                    }
-                    pointcloud_subcloud_channel[i_subcloud][i_width % 5].push_back(pointcloud_in->at(i_subcloud, i_width));
+            for(size_t i_row = 0; i_row < pointcloud_in->width; i_row++){//height, horizontal
 
+                for(size_t i_column = 0; i_column < pointcloud_in->height; i_column++){//all point in this sector
+
+                    pointcloud_in->at(i_row, i_column).intensity = pointcloud_in->at(i_row, i_column).timestamp - first_point_timestamp;
+
+                    size_t subscanSize = pointcloud_in->height / 6;
+                    if (i_column > subscanSize * 5 - 1)
+                    {
+                        pointcloud_subcloud_channel[i_row][5].push_back(pointcloud_in->at(i_row, i_column));
+                    }else if (i_column > subscanSize * 4 - 1)
+                    {
+                        pointcloud_subcloud_channel[i_row][4].push_back(pointcloud_in->at(i_row, i_column));
+                    }else if (i_column > subscanSize * 3 - 1)
+                    {
+                        pointcloud_subcloud_channel[i_row][3].push_back(pointcloud_in->at(i_row, i_column));
+                    }else if (i_column > subscanSize * 2 - 1)
+                    {
+                        pointcloud_subcloud_channel[i_row][2].push_back(pointcloud_in->at(i_row, i_column));
+                    }else if (i_column > subscanSize * 1 - 1)
+                    {
+                        pointcloud_subcloud_channel[i_row][1].push_back(pointcloud_in->at(i_row, i_column));
+                    }else
+                    {
+                        pointcloud_subcloud_channel[i_row][0].push_back(pointcloud_in->at(i_row, i_column));
+                    }
                 }
             }
+
+//            std::cout << "check point intensity: " << pointcloud_subcloud_channel[2][2].points[10].intensity << std::endl;
+
 //            std::cout<<std::endl;
             //ROS_INFO("after put");
 

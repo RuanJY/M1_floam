@@ -104,17 +104,34 @@ void LaserProcessingClass::featureExtractionM1(std::vector<std::vector<pcl::Poin
                                              pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_out_surf){
     //ROS_INFO("featureExtractionM1");
 
+//    for(int i_subcloud = 0; i_subcloud < 5; i_subcloud++){//height=sector
+//        for(int i_channel = 0; i_channel < 6; i_channel ++){//6 subscan
+//            std::vector<int> indices;
+//            pointcloud_subcloud_channel[i_subcloud][i_channel].is_dense = false;
+//            pcl::removeNaNFromPointCloud(pointcloud_subcloud_channel[i_subcloud][i_channel], pointcloud_subcloud_channel[i_subcloud][i_channel], indices);
+//        }
+//    }
+
+    std::vector<std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>>> pointcloud_subcloud_subscan(5, std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>>(6));
     for(int i_subcloud = 0; i_subcloud < 5; i_subcloud++){//height=sector
-        for(int i_channel = 0; i_channel < 5; i_channel ++){//5 channel
-            std::vector<int> indices;
-            pointcloud_subcloud_channel[i_subcloud][i_channel].is_dense = false;
-            pcl::removeNaNFromPointCloud(pointcloud_subcloud_channel[i_subcloud][i_channel], pointcloud_subcloud_channel[i_subcloud][i_channel], indices);
+        for(int i_subscan = 0; i_subscan < 6; i_subscan ++){//6 subscan
+
+            for (size_t i_point = 0; i_point < pointcloud_subcloud_channel[i_subcloud][i_subscan].points.size(); i_point++)
+            {
+                if (pointcloud_subcloud_channel[i_subcloud][i_subscan].points[i_point].x * pointcloud_subcloud_channel[i_subcloud][i_subscan].points[i_point].x +
+                    pointcloud_subcloud_channel[i_subcloud][i_subscan].points[i_point].y * pointcloud_subcloud_channel[i_subcloud][i_subscan].points[i_point].y +
+                    pointcloud_subcloud_channel[i_subcloud][i_subscan].points[i_point].z * pointcloud_subcloud_channel[i_subcloud][i_subscan].points[i_point].z < 200 * 200)
+                {
+                    pointcloud_subcloud_subscan[i_subcloud][i_subscan].push_back(pointcloud_subcloud_channel[i_subcloud][i_subscan].points[i_point]);
+                }
+            }
         }
     }
+
     std::vector<pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr> laserCloudScans;
     for(int i_sector = 0; i_sector < 5; i_sector++){//height=sector
-        for(int i_channel = 0; i_channel < 5; i_channel ++){//5 channel
-            pcl::PointCloud<RslidarM1PointXYZIRT>& pc_in = (pointcloud_subcloud_channel[i_sector][i_channel]);
+        for(int i_channel = 0; i_channel < 6; i_channel ++){//6 subscan
+            pcl::PointCloud<RslidarM1PointXYZIRT>& pc_in = (pointcloud_subcloud_subscan[i_sector][i_channel]);
             laserCloudScans.push_back(pc_in.makeShared());
         }
     }
@@ -168,7 +185,7 @@ void LaserProcessingClass::featureExtractionFromSector(const pcl::PointCloud<Rsl
             largestPickedNum++;
             picked_points.push_back(ind);
             
-            if (largestPickedNum <= 20){//maximum 10 points in each sector
+            if (largestPickedNum <= 20){//maximum 20 points in each sector
                 pc_out_edge->push_back(pc_in->points[ind]);
                 point_info_count++;
             }else{

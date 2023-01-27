@@ -4,12 +4,12 @@
 #ifndef _ODOM_ESTIMATION_CLASS_H_
 #define _ODOM_ESTIMATION_CLASS_H_
 
+#define PCL_NO_PRECOMPILE
+
 //std lib
 #include <string>
 #include <math.h>
 #include <vector>
-
-#define PCL_NO_PRECOMPILE
 
 //PCL
 #include <pcl/point_cloud.h>
@@ -83,9 +83,13 @@ class OdomEstimationClass
 
 		//function
 		void addEdgeCostFactor(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_in, const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& map_in, ceres::Problem& problem, ceres::LossFunction *loss_function);
+        void addEdgeCostFactor_deskew(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_in, const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& map_in, ceres::Problem& problem, ceres::LossFunction *loss_function, const Eigen::Isometry3d& T_last_curr);
 		void addSurfCostFactor(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_in, const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& map_in, ceres::Problem& problem, ceres::LossFunction *loss_function);
+        void addSurfCostFactor_deskew(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& pc_in, const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& map_in, ceres::Problem& problem, ceres::LossFunction *loss_function, const Eigen::Isometry3d& T_last_curr);
 		void addPointsToMap(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& downsampledEdgeCloud, const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& downsampledSurfCloud);
 		void pointAssociateToMap(RslidarM1PointXYZIRT const *const pi, RslidarM1PointXYZIRT *const po);
+		void pointAssociateToMap_CostFactor(RslidarM1PointXYZIRT const *const pi, RslidarM1PointXYZIRT *const po, const Eigen::Isometry3d& T_last_curr);
+        void pointAssociateToMap_UpdateMap(RslidarM1PointXYZIRT const *const pi, RslidarM1PointXYZIRT *const po);
 		void downSamplingToMap(const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& edge_pc_in, pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& edge_pc_out, const pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& surf_pc_in, pcl::PointCloud<RslidarM1PointXYZIRT>::Ptr& surf_pc_out);
 };
 
