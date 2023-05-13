@@ -1,4 +1,9 @@
-# FLOAM 
+# M1_FLOAM 
+modified version of floam for robosense M1 sensor
+run:
+```
+roslaunch floam floam_mapping_M1.launch
+```
 ## Fast LOAM (Lidar Odometry And Mapping)
 
 This work is an optimized version of A-LOAM and LOAM with the computational cost reduced by up to 3 times.
