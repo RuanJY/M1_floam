@@ -13,6 +13,15 @@
     <param name="max_dis" type="double" value="150.0" />
     <param name="map_resolution" type="double" value="0.3" />
     <param name="min_dis" type="double" value="1.5" />
+
+    <param name="num_sub_cloud" type="int" value="1" />
+    <param name="lidar_type" type="int" value="1" />
+
+    <param name="max_search_dis" type="double" value="1" />
+    <param name="optimization_times" type="int" value="6" />
+    <param name="iteration_times" type="int" value="8" />
+    <param name="box_sides" type="double" value="100" />
+    <param name="feature_resolution" type="double" value="0.4" />
     <!--- -->
     <node pkg="floam" type="floam_odom_estimation_node" name="floam_odom_estimation_node" output="screen"/>
     <node pkg="floam" type="floam_laser_processing_node" name="floam_laser_processing_node" output="screen"/>

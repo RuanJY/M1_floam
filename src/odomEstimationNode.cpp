@@ -161,6 +161,12 @@ int main(int argc, char **argv)
     nh.getParam("/scan_line", scan_line);//not used
     nh.getParam("/map_resolution", map_resolution);
 
+    nh.getParam("/max_search_dis", lidar_param.max_search_dis);
+    nh.getParam("/optimization_times", lidar_param.optimization_times);
+    nh.getParam("/iteration_times", lidar_param.iteration_times);
+    nh.getParam("/box_sides", lidar_param.box_sides);
+    nh.getParam("/feature_resolution", lidar_param.feature_resolution);
+
     lidar_param.setScanPeriod(scan_period);
     lidar_param.setVerticalAngle(vertical_angle);
     lidar_param.setLines(scan_line);

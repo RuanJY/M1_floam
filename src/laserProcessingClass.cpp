@@ -99,24 +99,21 @@ void LaserProcessingClass::featureExtraction(const pcl::PointCloud<pcl::PointXYZ
     }
 
 }
-void LaserProcessingClass::featureExtractionM1(std::vector<std::vector<pcl::PointCloud<pcl::PointXYZI>>>& pointcloud_subcloud_channel,
+void LaserProcessingClass::featureExtractionM1(std::vector<pcl::PointCloud<pcl::PointXYZI>>& pointcloud_subcloud_channel,
                                              pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_edge,
                                              pcl::PointCloud<pcl::PointXYZI>::Ptr& pc_out_surf){
     //ROS_INFO("featureExtractionM1");
 
+    //remove nan points
     for(int i_subcloud = 0; i_subcloud < 5; i_subcloud++){//height=sector
-        for(int i_channel = 0; i_channel < 5; i_channel ++){//5 channel
-            std::vector<int> indices;
-            pointcloud_subcloud_channel[i_subcloud][i_channel].is_dense = false;
-            pcl::removeNaNFromPointCloud(pointcloud_subcloud_channel[i_subcloud][i_channel], pointcloud_subcloud_channel[i_subcloud][i_channel], indices);
-        }
+        std::vector<int> indices;
+        pointcloud_subcloud_channel[i_subcloud].is_dense = false;
+        pcl::removeNaNFromPointCloud(pointcloud_subcloud_channel[i_subcloud], pointcloud_subcloud_channel[i_subcloud], indices);
     }
     std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> laserCloudScans;
     for(int i_sector = 0; i_sector < 5; i_sector++){//height=sector
-        for(int i_channel = 0; i_channel < 5; i_channel ++){//5 channel
-            pcl::PointCloud<pcl::PointXYZI>& pc_in = (pointcloud_subcloud_channel[i_sector][i_channel]);
-            laserCloudScans.push_back(pc_in.makeShared());
-        }
+        pcl::PointCloud<pcl::PointXYZI>& pc_in = (pointcloud_subcloud_channel[i_sector]);
+        laserCloudScans.push_back(pc_in.makeShared());
     }
 
     for(int i = 0; i < laserCloudScans.size(); i++){
@@ -169,7 +166,7 @@ void LaserProcessingClass::featureExtractionFromSector(const pcl::PointCloud<pcl
             largestPickedNum++;
             picked_points.push_back(ind);
             
-            if (largestPickedNum <= 20){//maximun 10 points in each sector
+            if (largestPickedNum <= 200){//maximun 10 points in each sector
                 pc_out_edge->push_back(pc_in->points[ind]);
                 point_info_count++;
             }else{

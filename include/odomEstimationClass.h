@@ -49,13 +49,13 @@ class OdomEstimationClass
 		pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloudSurfMap;
 	private:
         //param
-        double max_search_dis = 25; // kdtree_d
-        int optimization_times = 6; //icp
-        int iteration_times = 8; //ceres
+        double max_search_dis ; // kdtree_d
+        int optimization_times ; //icp
+        int iteration_times ; //ceres
         double box_sides = 100; //odom map
         double feature_resolution = 0.5; //downsample feature
 
-    //optimization variable
+        //optimization variable
 		double parameters[7] = {0, 0, 0, 1, 0, 0, 0};
 		Eigen::Map<Eigen::Quaterniond> q_w_curr = Eigen::Map<Eigen::Quaterniond>(parameters);
 		Eigen::Map<Eigen::Vector3d> t_w_curr = Eigen::Map<Eigen::Vector3d>(parameters + 4);

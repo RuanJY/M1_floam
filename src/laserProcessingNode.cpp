@@ -52,85 +52,123 @@ int total_frame=0;
 void laser_processing(){
     while(ros::ok()){
         if(!pointCloudBuf.empty()){
-            //read data
-            mutex_lock.lock();
-            pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_in(new pcl::PointCloud<pcl::PointXYZI>());
-            pcl::fromROSMsg(*pointCloudBuf.front(), *pointcloud_in);
-            ros::Time pointcloud_time = (pointCloudBuf.front())->header.stamp;
-            pointCloudBuf.pop();
-            mutex_lock.unlock();
+            int lidar_type = lidar_param.lidar_type; //0 velodyne, 1 M1
+            if(lidar_type == 0){
+                pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZI>());
+                pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_surf(new pcl::PointCloud<pcl::PointXYZI>());
+                //read data
+                mutex_lock.lock();
+                pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_in(new pcl::PointCloud<pcl::PointXYZI>());
+                pcl::fromROSMsg(*pointCloudBuf.front(), *pointcloud_in);
+                ros::Time pointcloud_time = (pointCloudBuf.front())->header.stamp;
+                pointCloudBuf.pop();
+                mutex_lock.unlock();
 
-            //convert M1 point cloud into 5 * 5 * n sector
-            std::vector<std::vector<pcl::PointCloud<pcl::PointXYZI>>> pointcloud_subcloud_channel(5, std::vector<pcl::PointCloud<pcl::PointXYZI>>(5));
-            // 5 * 5 * width array to store small point channel
-            //ROS_INFO("before put");
-            //old M1 bag zju, the width and height are exchanged
-/*            for(int i_subcloud = 0; i_subcloud < pointcloud_in->height; i_subcloud++){//height, horizental
-                for(int i_width = 0; i_width < pointcloud_in->width; i_width ++){//all point in this sector
-                    //pointcloud_in->at(i_width, i_subcloud).intensity = i_subcloud + 10 * (i_width% 5);
-                    pointcloud_subcloud_channel[i_subcloud][i_width % 5].push_back(pointcloud_in->at(i_width, i_subcloud));
-                }
-            }*/
-            //new bag sdk
-            for(int i_subcloud = 0; i_subcloud < pointcloud_in->width; i_subcloud++){//height, horizental
-                for(int i_width = 0; i_width < pointcloud_in->height; i_width ++){//all point in this sector
-                    //pointcloud_in->at(i_width, i_subcloud).intensity = i_subcloud + 10 * (i_width% 5);
-                    pointcloud_subcloud_channel[i_subcloud][i_width % 5].push_back(pointcloud_in->at(i_subcloud, i_width));
-                }
+                std::chrono::time_point<std::chrono::system_clock> start, end;
+                start = std::chrono::system_clock::now();
+
+                laserProcessing.featureExtraction(pointcloud_in,pointcloud_edge,pointcloud_surf);
+
+                end = std::chrono::system_clock::now();
+                std::chrono::duration<float> elapsed_seconds = end - start;
+                total_frame++;
+                float time_temp = elapsed_seconds.count() * 1000;
+                total_time+=time_temp;
+                //ROS_INFO("average laser processing time %f ms \n \n", total_time/total_frame);
+
+                sensor_msgs::PointCloud2 laserCloudFilteredMsg;
+                pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_filtered(new pcl::PointCloud<pcl::PointXYZI>());
+                *pointcloud_filtered+=*pointcloud_edge;
+                *pointcloud_filtered+=*pointcloud_surf;
+                pcl::toROSMsg(*pointcloud_filtered, laserCloudFilteredMsg);
+                laserCloudFilteredMsg.header.stamp = pointcloud_time;
+                laserCloudFilteredMsg.header.frame_id = "base_link";
+                pubLaserCloudFiltered.publish(laserCloudFilteredMsg);
+
+                sensor_msgs::PointCloud2 edgePointsMsg;
+                pcl::toROSMsg(*pointcloud_edge, edgePointsMsg);
+                edgePointsMsg.header.stamp = pointcloud_time;
+                edgePointsMsg.header.frame_id = "base_link";
+                pubEdgePoints.publish(edgePointsMsg);
+
+
+                sensor_msgs::PointCloud2 surfPointsMsg;
+                pcl::toROSMsg(*pointcloud_surf, surfPointsMsg);
+                surfPointsMsg.header.stamp = pointcloud_time;
+                surfPointsMsg.header.frame_id = "base_link";
+                pubSurfPoints.publish(surfPointsMsg);
             }
-            //ROS_INFO("after put");
+            else if(lidar_type == 1){
+                mutex_lock.lock();
+                pcl::PointCloud<robosenseM1_ros::Point> pl_orig;
+                pcl::fromROSMsg(*pointCloudBuf.front(), pl_orig);
+                ros::Time pointcloud_time = (pointCloudBuf.front())->header.stamp;
+                int plsize = pl_orig.size();
+                double time_stamp = pointCloudBuf.front()->header.stamp.toSec();
+                pointCloudBuf.pop();
+                mutex_lock.unlock();
 
-            //test if point is correct, result: correct
-/*            std::vector<int> indices;
-            pcl::removeNaNFromPointCloud(*pointcloud_in,*pointcloud_in, indices);*/
-/*            sensor_msgs::PointCloud2 laserCloudRaw;
-            pcl::toROSMsg(*pointcloud_in, laserCloudRaw);
-            laserCloudRaw.header.stamp = pointcloud_time;
-            laserCloudRaw.header.frame_id = "base_link";
-            pubLaserCloudFiltered.publish(laserCloudRaw);
-            std::cout << "laserCloudRaw num: " << pointcloud_in->points.size() <<std::endl;
-            std::cout << "height: " << pointcloud_in->height <<std::endl;
+                int i_sub_cloud, num_sub_cloud = lidar_param.num_sub_cloud;
+                double strat_time,  end_time;
+                double blind = 1.0;
+                //reordered
+                int num_point_each_sub_cloud = plsize/pl_orig.width/num_sub_cloud;
+                robosenseM1_ros::Point first_point =pl_orig.points[num_point_each_sub_cloud * i_sub_cloud];
+                for(i_sub_cloud = 0; i_sub_cloud < num_sub_cloud; i_sub_cloud++ ){//split
+                    pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZI>());
+                    pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_surf(new pcl::PointCloud<pcl::PointXYZI>());
+                    std::vector<pcl::PointCloud<pcl::PointXYZI>> pointcloud_subcloud_channel(5);
+                    for(int i_ori_width = 0; i_ori_width < pl_orig.width; i_ori_width ++){
+                        for(int i_ori_height = num_point_each_sub_cloud * i_sub_cloud;
+                            i_ori_height < num_point_each_sub_cloud * (i_sub_cloud+1); i_ori_height ++) {
 
-            for(int i=0; i<50; i++){
-                std::cout << "point: " << pointcloud_in->at(i,0) <<std::endl;
-            }*/
+                            robosenseM1_ros::Point & ori_point = pl_orig.at(i_ori_width, i_ori_height);
+                            if(i_ori_height == num_point_each_sub_cloud * i_sub_cloud){//record time of the first point
+                                strat_time = ori_point.timestamp;
+                            }else if(i_ori_height == num_point_each_sub_cloud * (i_sub_cloud+1) - 1){//record time of the last point
+                                end_time = ori_point.timestamp;
+                            }
+                            //if (i_ori_height % point_filter_num != 0) {continue;}
 
-            pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZI>());          
-            pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_surf(new pcl::PointCloud<pcl::PointXYZI>());
+                            double range = ori_point.x * ori_point.x + ori_point.y * ori_point.y + ori_point.z * ori_point.z;
+                            if(sqrt(range) < 150 && sqrt(range) > blind){
 
-            std::chrono::time_point<std::chrono::system_clock> start, end;
-            start = std::chrono::system_clock::now();
-            //laserProcessing.featureExtraction(pointcloud_in,pointcloud_edge,pointcloud_surf);
-            laserProcessing.featureExtractionM1(pointcloud_subcloud_channel, pointcloud_edge, pointcloud_surf);
-            end = std::chrono::system_clock::now();
-            std::chrono::duration<float> elapsed_seconds = end - start;
-            total_frame++;
-            float time_temp = elapsed_seconds.count() * 1000;
-            total_time+=time_temp;
-            //ROS_INFO("average laser processing time %f ms \n \n", total_time/total_frame);
+                                Eigen::Vector3d pt_vec;
+                                pcl::PointXYZI added_pt;
+                                added_pt.x = ori_point.x;
+                                added_pt.y = ori_point.y;
+                                added_pt.z = ori_point.z;
+                                added_pt.intensity = ori_point.intensity;
+                                pointcloud_subcloud_channel[i_ori_width].push_back(added_pt);
+                            }
 
-            sensor_msgs::PointCloud2 laserCloudFilteredMsg;
-            pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_filtered(new pcl::PointCloud<pcl::PointXYZI>());  
-            *pointcloud_filtered+=*pointcloud_edge;
-            *pointcloud_filtered+=*pointcloud_surf;
-            pcl::toROSMsg(*pointcloud_filtered, laserCloudFilteredMsg);
-            laserCloudFilteredMsg.header.stamp = pointcloud_time;
-            laserCloudFilteredMsg.header.frame_id = "base_link";
-            pubLaserCloudFiltered.publish(laserCloudFilteredMsg);
+                        }
+                    }
+                    laserProcessing.featureExtractionM1(pointcloud_subcloud_channel, pointcloud_edge, pointcloud_surf);
 
-            sensor_msgs::PointCloud2 edgePointsMsg;
-            pcl::toROSMsg(*pointcloud_edge, edgePointsMsg);
-            edgePointsMsg.header.stamp = pointcloud_time;
-            edgePointsMsg.header.frame_id = "base_link";
-            pubEdgePoints.publish(edgePointsMsg);
+                    sensor_msgs::PointCloud2 laserCloudFilteredMsg;
+                    pcl::PointCloud<pcl::PointXYZI>::Ptr pointcloud_filtered(new pcl::PointCloud<pcl::PointXYZI>());
+                    *pointcloud_filtered+=*pointcloud_edge;
+                    *pointcloud_filtered+=*pointcloud_surf;
+                    pcl::toROSMsg(*pointcloud_filtered, laserCloudFilteredMsg);
+                    laserCloudFilteredMsg.header.stamp = pointcloud_time;
+                    laserCloudFilteredMsg.header.frame_id = "base_link";
+                    pubLaserCloudFiltered.publish(laserCloudFilteredMsg);
 
+                    sensor_msgs::PointCloud2 edgePointsMsg;
+                    pcl::toROSMsg(*pointcloud_edge, edgePointsMsg);
+                    edgePointsMsg.header.stamp = pointcloud_time;
+                    edgePointsMsg.header.frame_id = "base_link";
+                    pubEdgePoints.publish(edgePointsMsg);
 
-            sensor_msgs::PointCloud2 surfPointsMsg;
-            pcl::toROSMsg(*pointcloud_surf, surfPointsMsg);
-            surfPointsMsg.header.stamp = pointcloud_time;
-            surfPointsMsg.header.frame_id = "base_link";
-            pubSurfPoints.publish(surfPointsMsg);
+                    sensor_msgs::PointCloud2 surfPointsMsg;
+                    pcl::toROSMsg(*pointcloud_surf, surfPointsMsg);
+                    surfPointsMsg.header.stamp = pointcloud_time;
+                    surfPointsMsg.header.frame_id = "base_link";
+                    pubSurfPoints.publish(surfPointsMsg);
+                }
 
+            }
         }
         //sleep 2 ms every time
         std::chrono::milliseconds dura(2);
@@ -154,6 +192,9 @@ int main(int argc, char **argv)
     nh.getParam("/max_dis", max_dis);
     nh.getParam("/min_dis", min_dis);
     nh.getParam("/scan_line", scan_line);
+
+    nh.getParam("/num_sub_cloud", lidar_param.num_sub_cloud);
+    nh.getParam("/lidar_type", lidar_param.lidar_type);
 
     lidar_param.setScanPeriod(scan_period);
     lidar_param.setVerticalAngle(vertical_angle);

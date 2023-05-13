@@ -19,7 +19,19 @@ void OdomEstimationClass::init(lidar::Lidar lidar_param, double map_resolution){
 
     odom = Eigen::Isometry3d::Identity();
     last_odom = Eigen::Isometry3d::Identity();
-    optimization_count=optimization_times;
+
+    optimization_count = lidar_param.optimization_times;
+    max_search_dis = lidar_param.max_search_dis; // kdtree_d
+    optimization_times = lidar_param.optimization_times; //icp
+    iteration_times = lidar_param.iteration_times; //ceres
+    box_sides = lidar_param.box_sides; //odom map
+    feature_resolution = lidar_param.feature_resolution; //downsample feature
+    std::cout << "optimization_count " << optimization_count << std::endl;
+    std::cout << "max_search_dis " << max_search_dis << std::endl;
+    std::cout << "optimization_times " << optimization_times << std::endl;
+    std::cout << "iteration_times " << iteration_times << std::endl;
+    std::cout << "box_sides " << box_sides << std::endl;
+    std::cout << "feature_resolution " << feature_resolution << std::endl;
 }
 
 void OdomEstimationClass::initMapWithPoints(const pcl::PointCloud<pcl::PointXYZI>::Ptr& edge_in, const pcl::PointCloud<pcl::PointXYZI>::Ptr& surf_in){
@@ -71,7 +83,7 @@ void OdomEstimationClass::updatePointsToMap(const pcl::PointCloud<pcl::PointXYZI
 
         }
     }else{
-        printf("not enough points in OdomEstimation::laserCloudCornerMap, map error");
+        printf("not enough points in OdomEstimation::laserCloudCornerMap, map error ");
     }
     odom = Eigen::Isometry3d::Identity();
     odom.linear() = q_w_curr.toRotationMatrix();
@@ -147,7 +159,7 @@ void OdomEstimationClass::addEdgeCostFactor(const pcl::PointCloud<pcl::PointXYZI
         }
     }
     if(corner_num<20){
-        std::cout << "not enough valid edge points" << std::endl;
+        std::cout << "not enough valid edge constrains: " << corner_num << "<20" << std::endl;
     }
 
 }
@@ -202,7 +214,7 @@ void OdomEstimationClass::addSurfCostFactor(const pcl::PointCloud<pcl::PointXYZI
 
     }
     if(surf_num<20){
-        std::cout << "not enough valid surf points" << std::endl;
+        std::cout << "not enough valid surf constrains: " << surf_num << "<20" << std::endl;
     }
 
 }
